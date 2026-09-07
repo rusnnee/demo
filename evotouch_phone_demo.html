@@ -58,7 +58,25 @@ body {
    while keeping the exact ratio (the real device is 13cm x 6.5cm, but cm
    can't be guaranteed to map 1:1 across screens, so the RATIO is what's
    actually enforced here, scaled to fill whatever viewport this loads in). */
+/* Thick bezel on all 4 sides (box-sizing:border-box on * above keeps this
+   INSIDE the fixed 2:1 aspect-ratio box, not added outside it). The left
+   side gets extra width on top of the base thickness for the phone's
+   notch/camera cutout in landscape -- env(safe-area-inset-left) actually
+   keeps content clear of a real notch if opened on one, stacked with the
+   same visible thickness as the other 3 sides. */
+/* container-type:inline-size turns #phone into a query container, so its
+   children CAN use cqw units below ("1cqw" = 1% of #phone's own rendered
+   width) -- this is the actual fix for content overlapping at small sizes.
+   Before this, every font-size/gap/padding here that used a fixed px value
+   stayed the SAME absolute size no matter how small #phone was rendered,
+   so at a real small phone size (or a small browser window) the fixed-px
+   text/controls didn't shrink along with the frame and started colliding
+   with each other (the breathing circle overlapping the status row, slider
+   labels overlapping each other, etc.) -- confirmed by literally resizing
+   the viewport down and screenshotting it. Chrome-only feature, which this
+   whole project already assumes (Web Serial/Web Speech require it). */
 #phone {
+  container-type: inline-size;
   width: min(100vw, 200vh);
   aspect-ratio: 2 / 1;
   max-width: 100vw;
@@ -67,21 +85,20 @@ body {
   display: flex;
   overflow: hidden;
   box-shadow: 0 0 50px #0009;
-}
-
-/* Reserved strip for the phone's notch/camera cutout in landscape -- a
-   visible border PLUS the real safe-area inset (env()) stacked together,
-   so this both reads as a deliberate design margin in the demo and
-   actually keeps content clear of a real notch if opened on one. */
-#notch-border {
-  width: calc(26px + env(safe-area-inset-left, 0px));
-  flex-shrink: 0;
-  background: var(--brown-900);
+  border: 44px solid var(--brown-900);
+  border-left-width: calc(44px + env(safe-area-inset-left, 0px));
 }
 
 /* ── LEFT PANEL (now the only panel -- fills the whole frame) ── */
+/* Base font-size in cqw -- every font-size/em-based size below this point
+   scales directly off #phone's own current width, not the viewport's, so
+   shrinking the phone frame shrinks all the text/controls proportionally
+   instead of them staying a fixed px size and colliding. 2.1cqw ~= 14px at
+   a ~667px-wide phone, which is what all the em multipliers below were
+   tuned against. */
 #left {
   flex: 1;
+  font-size: 2.1cqw;
   background: var(--surface);
   display: flex;
   flex-direction: column;
@@ -94,28 +111,19 @@ body {
 #status-row {
   display: flex;
   justify-content: space-between;
-  gap: 6px;
+  gap: 0.43em;
 }
 .status-chip {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 5px;
   min-width: 0;
 }
-.status-chip .led {
-  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-  background: #ddd; transition: background .3s, box-shadow .3s;
-}
-.status-chip .led.off      { background: #d0c8c0; }
-.status-chip .led.ready    { background: var(--green); box-shadow: 0 0 5px var(--green); }
-.status-chip .led.playing  { background: var(--teal);  box-shadow: 0 0 5px var(--teal); animation: led-flash-1hz 1s step-end infinite; }
-@keyframes led-flash-1hz { 0%,49%{opacity:1} 50%,100%{opacity:.15} }
 .status-chip .chip-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.status-chip .chip-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-subtle); }
-.status-chip .chip-value { font-size: 9.5px; font-weight: 600; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.status-chip.liver  .chip-label { color: var(--liver-col); }
-.status-chip.spleen .chip-label { color: var(--spleen-col); }
+.status-chip .chip-label { font-size: 0.57em; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--surface); }
+.status-chip .chip-value { font-size: 0.68em; font-weight: 600; color: var(--surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.status-chip.liver  .chip-label { color: var(--surface); }
+.status-chip.spleen .chip-label { color: var(--surface); }
 
 /* ── BREATHING VISUAL (the main focal point now the silhouette is gone) ──
    A big pulsing circle + large phase label, plus the linear bar underneath
@@ -158,7 +166,7 @@ body {
 #breath-circle-ring {
   position: absolute; inset: 0;
   border-radius: 50%;
-  border: 2px dashed var(--border-strong);
+  border: 0.14em dashed var(--border-strong);
 }
 /* No CSS transition on transform/box-shadow here -- they're already being
    set every animation frame from JS (see updateBreathCircle()), computing
@@ -171,7 +179,7 @@ body {
   width: 60%; height: 60%;
   border-radius: 50%;
   background: radial-gradient(circle at 40% 35%, var(--teal-light), var(--teal) 70%, var(--teal-dark));
-  box-shadow: 0 0 14px 2px #28a0b055;
+  box-shadow: 0 0 1em 0.14em #28a0b055;
 }
 /* Reserves space for its OWN worst case (2 lines, for the longer "Fully
    Breathed In/Out" text) at all times, even while showing shorter 1-line
@@ -181,7 +189,7 @@ body {
    size/position exactly at those moments. Fixed height + centered content
    means the text can change without ever moving anything else. */
 #breath-phase-label {
-  font-size: 20px;
+  font-size: 1.43em;
   line-height: 1.25;
   min-height: 2.5em;
   display: flex;
@@ -195,15 +203,15 @@ body {
   transition: color .15s;
 }
 
-#breathing-wrap { width: 100%; display: flex; flex-direction: column; gap: 4px; }
-#breathing-label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--teal-dark); }
+#breathing-wrap { width: 100%; display: flex; flex-direction: column; gap: 0.29em; }
+#breathing-label { font-size: 0.93em; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--teal-dark); }
 #breathing-bar-track {
-  height: 10px; background: var(--border); border-radius: 5px; overflow: hidden;
+  height: 0.71em; background: var(--border); border-radius: 0.36em; overflow: hidden;
 }
 #breathing-bar-fill {
   height: 100%; width: 0%;
   background: linear-gradient(90deg, var(--teal-light), var(--teal));
-  border-radius: 5px;
+  border-radius: 0.36em;
   transition: width .05s linear;
 }
 
@@ -236,21 +244,21 @@ body {
    Stacked (not side by side) now that they live in the narrower
    controls column. */
 .organ-len-row { display: flex; flex-direction: column; gap: 12%; }
-.organ-len { display: flex; flex-direction: column; gap: 4px; }
+.organ-len { display: flex; flex-direction: column; gap: 0.29em; }
 .organ-len-header { display: flex; justify-content: space-between; align-items: baseline; }
-.organ-len-name { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.organ-len-name { font-size: 1em; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
 .organ-len-name.liver  { color: var(--liver-col); }
 .organ-len-name.spleen { color: var(--spleen-col); }
-.organ-len-val { font-size: 14px; color: var(--text-subtle); }
+.organ-len-val { font-size: 1em; color: var(--text-subtle); }
 
-.slider-track-wrap { position: relative; height: 18px; }
+.slider-track-wrap { position: relative; height: 1.29em; }
 input[type=range] {
-  -webkit-appearance: none; width: 100%; height: 4px; margin-top: 7px;
-  background: var(--border); border-radius: 2px; outline: none; cursor: pointer;
+  -webkit-appearance: none; width: 100%; height: 0.29em; margin-top: 0.5em;
+  background: var(--border); border-radius: 0.14em; outline: none; cursor: pointer;
 }
 input[type=range]::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
-  border: 2px solid #fff; box-shadow: 0 1px 3px #0003; cursor: pointer;
+  -webkit-appearance: none; width: 1.07em; height: 1.07em; border-radius: 50%;
+  border: 0.14em solid #fff; box-shadow: 0 1px 3px #0003; cursor: pointer;
 }
 #liver-len::-webkit-slider-thumb  { background: var(--liver-col); }
 #spleen-len::-webkit-slider-thumb { background: var(--spleen-col); }
@@ -260,9 +268,9 @@ input[type=range]::-webkit-slider-thumb {
    Sits UNDER the real thumb on the same track so dragging the slider still
    works normally at any time. */
 .pos-marker {
-  position: absolute; top: 7px; left: 0%;
-  width: 9px; height: 9px; border-radius: 50%;
-  transform: translate(-50%, -2.5px);
+  position: absolute; top: 0.5em; left: 0%;
+  width: 0.64em; height: 0.64em; border-radius: 50%;
+  transform: translate(-50%, -0.18em);
   pointer-events: none;
   opacity: 0;
   transition: opacity .2s;
@@ -272,13 +280,13 @@ input[type=range]::-webkit-slider-thumb {
 .pos-marker.spleen { background: var(--spleen-glow); box-shadow: 0 0 6px var(--spleen-glow); }
 
 /* ── Buttons ── */
-#btn-row { display: flex; flex-direction: column; gap: 6px; }
+#btn-row { display: flex; flex-direction: column; gap: 0.43em; }
 button {
-  font-family: inherit; border: none; cursor: pointer; border-radius: 6px;
+  font-family: inherit; border: none; cursor: pointer; border-radius: 0.43em;
   transition: all .15s; line-height: 1;
 }
 #play-btn {
-  width: 100%; padding: 10px; font-size: 17px; font-weight: 700;
+  width: 100%; padding: 0.71em; font-size: 1.21em; font-weight: 700;
   background: var(--teal); color: #fff; letter-spacing: .02em;
 }
 #play-btn:hover { background: var(--teal-dark); }
@@ -286,7 +294,7 @@ button {
 #play-btn.playing:hover { background: var(--brown-900); }
 
 #voice-btn {
-  width: 100%; padding: 9px; font-size: 15px; font-weight: 600;
+  width: 100%; padding: 0.64em; font-size: 1.07em; font-weight: 600;
   background: var(--surface-2); color: var(--brown-500);
   border: 1px solid var(--border-strong);
 }
@@ -298,7 +306,6 @@ button {
 <body>
 
 <div id="phone">
-  <div id="notch-border"></div>
 
   <!-- Single panel now -- status row, the big breathing visual, organ
        length sliders, controls. No device connection, no silhouette. -->
@@ -306,21 +313,18 @@ button {
 
     <div id="status-row">
       <div class="status-chip">
-        <div class="led ready" id="led-sys"></div>
         <div class="chip-text">
           <span class="chip-label">System</span>
           <span class="chip-value" id="txt-sys">Ready</span>
         </div>
       </div>
       <div class="status-chip liver">
-        <div class="led ready" id="led-liver"></div>
         <div class="chip-text">
           <span class="chip-label">Liver</span>
           <span class="chip-value" id="txt-liver">Ready</span>
         </div>
       </div>
       <div class="status-chip spleen">
-        <div class="led ready" id="led-spleen"></div>
         <div class="chip-text">
           <span class="chip-label">Spleen</span>
           <span class="chip-value" id="txt-spleen">Ready</span>
@@ -409,7 +413,6 @@ const breathCircle     = document.getElementById('breath-circle');
 const breathPhaseLabel = document.getElementById('breath-phase-label');
 
 // ─── STATUS HELPERS ──────────────────────────────────────────────────────
-function setLed(id, cls) { document.getElementById(id).className = 'led ' + cls; }
 function setTxt(id, txt) { document.getElementById(id).textContent = txt; }
 
 // ─── SLIDER LABEL SYNC ───────────────────────────────────────────────────
@@ -445,13 +448,27 @@ function updatePosMarker(markerEl, sliderEl, frac) {
 // size swing (not a subtle one) plus a glow that brightens noticeably at
 // full inhale, so the state reads at a glance rather than needing the
 // small bar/label to be read closely.
+// Glow size/spread are computed as a fraction of the circle's own CURRENT
+// rendered size (getBoundingClientRect), not fixed px -- fixed px glow
+// values wouldn't scale down with the phone frame the same way the rest of
+// the layout now does (see #phone's container-type:inline-size), so at a
+// small phone size the glow would end up looking oversized relative to the
+// shrunk circle. Reading the real rendered width each frame keeps it
+// proportionally correct at any phone size.
 function updateBreathCircle(frac) {
   const scale = 0.55 + frac * 0.65; // 0.55 at fully out -> 1.20 at fully in
-  const glowSize   = 10 + frac * 34;
-  const glowSpread = 1 + frac * 5;
+  breathCircle.style.transform = `scale(${scale.toFixed(3)})`;
+
+  // offsetWidth (not getBoundingClientRect) deliberately -- offsetWidth
+  // reflects the layout box BEFORE the transform:scale() above is applied,
+  // so the glow's base size stays the stable 60%-of-wrap size and only
+  // grows via the frac-based fraction below, instead of also compounding
+  // with the scale animation itself (which would make it grow twice over).
+  const circleSize = breathCircle.offsetWidth || 40;
+  const glowSize   = circleSize * (0.15 + frac * 0.55);
+  const glowSpread = circleSize * (0.02 + frac * 0.08);
   const glowAlpha  = 0.35 + frac * 0.45;
-  breathCircle.style.transform  = `scale(${scale.toFixed(3)})`;
-  breathCircle.style.boxShadow  = `0 0 ${glowSize.toFixed(0)}px ${glowSpread.toFixed(0)}px rgba(40,160,176,${glowAlpha.toFixed(2)})`;
+  breathCircle.style.boxShadow = `0 0 ${glowSize.toFixed(1)}px ${glowSpread.toFixed(1)}px rgba(40,160,176,${glowAlpha.toFixed(2)})`;
 }
 
 // Four distinct phases (not just two) -- a brief, clearly-labeled "Fully..."
@@ -475,8 +492,8 @@ function tick(nowMs) {
 
   const label = phaseLabel(frac, inhaling);
   breathPhaseLabel.textContent = label;
-  setLed('led-liver', 'playing');  setTxt('txt-liver',  label);
-  setLed('led-spleen', 'playing'); setTxt('txt-spleen', label);
+  setTxt('txt-liver',  label);
+  setTxt('txt-spleen', label);
 
   rafId = requestAnimationFrame(tick);
 }
@@ -498,9 +515,9 @@ function stopBreathing() {
   spleenPosMarker.style.left = '0%';
   updateBreathCircle(0);
   breathPhaseLabel.textContent = 'Ready';
-  setLed('led-sys', 'ready');    setTxt('txt-sys', 'Ready');
-  setLed('led-liver', 'ready');  setTxt('txt-liver', 'Ready');
-  setLed('led-spleen', 'ready'); setTxt('txt-spleen', 'Ready');
+  setTxt('txt-sys', 'Ready');
+  setTxt('txt-liver', 'Ready');
+  setTxt('txt-spleen', 'Ready');
 }
 
 // ─── CONTROLS ────────────────────────────────────────────────────────────
@@ -520,7 +537,7 @@ playBtn.addEventListener('click', () => {
   playBtn.classList.add('playing');
   voiceBtn.textContent = 'Voice Control: Off';
   voiceBtn.classList.remove('active');
-  setLed('led-sys', 'playing'); setTxt('txt-sys', 'Playing');
+  setTxt('txt-sys', 'Playing');
   startBreathing();
 });
 
@@ -538,7 +555,7 @@ voiceBtn.addEventListener('click', () => {
   voiceBtn.classList.add('active');
   playBtn.textContent = 'Play';
   playBtn.classList.remove('playing');
-  setLed('led-sys', 'playing'); setTxt('txt-sys', 'Voice Control On');
+  setTxt('txt-sys', 'Voice Control On');
   startBreathing();
 });
 </script>
